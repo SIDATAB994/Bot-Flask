@@ -2,21 +2,19 @@ import requests
 import os
 import datetime
 
-API_KEY = os.environ.get("e3848ed3063c719336b32e0b4861c7d9")  # à mettre dans Railway Environment
+API_KEY = os.environ.get("API_KEY")  # Mettre dans Railway Environment
 
-SPORTS = ["soccer_epl", "basketball_nba", "tennis_atp"]  # sports à récupérer
+SPORTS = ["soccer_epl", "basketball_nba", "tennis_atp"]
 
-def get_daily_bets():
-    today = datetime.date.today()
+def get_bets_for_date(target_date=None):
+    """Récupère les paris pour une date donnée"""
+    today = datetime.date.today() if not target_date else target_date
     bets = []
 
     if not API_KEY:
-        # fallback si pas de clé API
-        return {
-            "date": str(today),
-            "simple": {"match": "Erreur API", "prediction": "-", "prob": 0, "odd": 0, "value": 0},
-            "combo": []
-        }
+        return {"date": str(today),
+                "simple": {"match": "Erreur API", "prediction": "-", "prob": 0, "odd": 0, "value": 0},
+                "combo": []}
 
     try:
         for sport in SPORTS:
@@ -25,7 +23,7 @@ def get_daily_bets():
             if response.status_code != 200:
                 continue
             events = response.json()
-            for e in events[:5]:  # limiter pour la stabilité
+            for e in events[:5]:
                 match = f"{e['home_team']} vs {e['away_team']}"
                 bookmaker = e['bookmakers'][0]
                 for market in bookmaker['markets']:
@@ -38,7 +36,8 @@ def get_daily_bets():
                             "odd": outcome['price'],
                             "prob": round(1/outcome['price'],2)
                         })
-        # calcul valeur
+
+        # Calcul valeur
         for b in bets:
             b["value"] = round(b["prob"] * b["odd"],2)
 
@@ -48,8 +47,6 @@ def get_daily_bets():
         return {"date": str(today), "simple": simple, "combo": combo}
 
     except Exception as e:
-        return {
-            "date": str(today),
-            "simple": {"match": f"Erreur: {str(e)}", "prediction":"-", "prob":0,"odd":0,"value":0},
-            "combo": []
-        }
+        return {"date": str(today),
+                "simple": {"match": f"Erreur: {str(e)}", "prediction":"-", "prob":0,"odd":0,"value":0},
+                "combo": []}
