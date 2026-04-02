@@ -2,7 +2,7 @@ import requests
 import os
 import datetime
 
-API_KEY = os.environ.get("e3848ed3063c719336b32e0b4861c7d9")  
+API_KEY = os.environ.get("API_KEY")  
 
 SPORTS = ["soccer_epl", "basketball_nba", "tennis_atp"]
 
