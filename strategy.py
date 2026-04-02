@@ -2,7 +2,7 @@ import requests
 import os
 import datetime
 
-API_KEY = os.environ.get("e3848ed3063c719336b32e0b4861c7d9")  # Mettre dans Railway Environment
+API_KEY = os.environ.get("e3848ed3063c719336b32e0b4861c7d9")  
 
 SPORTS = ["soccer_epl", "basketball_nba", "tennis_atp"]
 
@@ -37,7 +37,6 @@ def get_bets_for_date(target_date=None):
                             "prob": round(1/outcome['price'],2)
                         })
 
-        # Calcul valeur
         for b in bets:
             b["value"] = round(b["prob"] * b["odd"],2)
 
