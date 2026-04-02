@@ -1,12 +1,11 @@
 from flask import Flask, jsonify
 from strategy import get_daily_bets
-import os
-import datetime
+import os, datetime
 
 app = Flask(__name__)
 
 bets_memory = {}
-bets_date = None  # pour stocker la date du dernier calcul
+bets_date = None
 
 @app.route("/")
 def home():
@@ -23,13 +22,10 @@ def run():
 def bets():
     global bets_memory, bets_date
     today = datetime.date.today()
-    
-    # Si la date a changé ou qu'aucun pari n'existe, recalculer
     if bets_date != today or not bets_memory:
         bets_memory = get_daily_bets()
         bets_date = today
-    
     return jsonify(bets_memory)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)))
