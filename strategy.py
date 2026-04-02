@@ -1,39 +1,43 @@
-import random
+import requests
 import datetime
 
+API_KEY = "e3848ed3063c719336b32e0b4861c7d9"  # à créer sur theoddsapi.com
+SPORTS = ["soccer_epl", "basketball_nba", "tennis_atp"]
+
 def get_daily_bets():
-    """
-    Analyse ultra poussée (simulation)
-    - Compare tous les événements du jour (multi-sports)
-    - Génère un combiné fiable
-    """
-
     today = datetime.date.today()
+    bets = []
 
-    # Exemple simulé de données sportives
-    events = [
-        {"sport": "Football", "match": "PSG vs Lyon", "prob": 0.68, "odd": 1.55},
-        {"sport": "Football", "match": "Inter vs Roma", "prob": 0.64, "odd": 1.60},
-        {"sport": "Basketball", "match": "Lakers vs Warriors", "prob": 0.60, "odd": 1.75},
-        {"sport": "Tennis", "match": "Djokovic vs Nadal", "prob": 0.62, "odd": 1.70},
-        {"sport": "Hockey", "match": "Maple Leafs vs Canadiens", "prob": 0.65, "odd": 1.50},
-    ]
+    for sport in SPORTS:
+        url = f"https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={API_KEY}&regions=eu&markets=h2h,spreads,totals&dateFormat=iso"
+        response = requests.get(url)
+        if response.status_code == 200:
+            events = response.json()
+            for e in events:
+                match = f"{e['home_team']} vs {e['away_team']}"
+                # Exemple simple : prendre le premier bookmaker
+                bookmaker = e['bookmakers'][0]
+                for market in bookmaker['markets']:
+                    for outcome in market['outcomes']:
+                        bets.append({
+                            "match": match,
+                            "sport": sport,
+                            "type": market['key'],      # h2h / spreads / totals
+                            "prediction": outcome['name'],
+                            "odd": outcome['price'],
+                            "prob": round(1/outcome['price'], 2)  # approximation
+                        })
 
-    # Calcul ultra poussée : value = prob * odd, tri, combinés
-    for e in events:
-        e["value"] = round(e["prob"] * e["odd"], 2)
+    # Calcul valeur = prob * odd
+    for b in bets:
+        b["value"] = round(b["prob"] * b["odd"], 2)
 
-    # Simple : pari avec meilleure probabilité
-    simple = max(events, key=lambda x: x["prob"])
+    # Simple et combo
+    simple = max(bets, key=lambda x: x["prob"])
+    combo = sorted(bets, key=lambda x: x["value"], reverse=True)[:3]
 
-    # Combo : top 2 ou top 3 selon valeur
-    combo = sorted(events, key=lambda x: x["value"], reverse=True)[:3]
-
-    # Ajouter la date
-    result = {
+    return {
         "date": str(today),
         "simple": simple,
         "combo": combo
     }
-
-    return result
