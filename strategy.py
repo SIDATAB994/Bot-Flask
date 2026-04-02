@@ -2,7 +2,7 @@ import requests
 import os
 import datetime
 
-API_KEY = os.environ.get("API_KEY")  # à mettre dans Railway Environment
+API_KEY = os.environ.get("e3848ed3063c719336b32e0b4861c7d9")  # à mettre dans Railway Environment
 
 SPORTS = ["soccer_epl", "basketball_nba", "tennis_atp"]  # sports à récupérer
 
