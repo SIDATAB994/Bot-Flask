@@ -1,51 +1,79 @@
 import requests
 import os
 import datetime
+from analysis import value_score, confidence
+from data_sources import enrich_with_stats
 
-API_KEY = os.environ.get("API_KEY")  
+API_KEY = os.environ.get("API_KEY")
 
-SPORTS = ["soccer_epl", "basketball_nba", "tennis_atp"]
+SPORTS = [
+    "soccer_epl",
+    "soccer_france_ligue_one",
+    "basketball_nba"
+]
 
 def get_bets_for_date(target_date=None):
-    """Récupère les paris pour une date donnée"""
+
     today = datetime.date.today() if not target_date else target_date
     bets = []
 
     if not API_KEY:
-        return {"date": str(today),
-                "simple": {"match": "Erreur API", "prediction": "-", "prob": 0, "odd": 0, "value": 0},
-                "combo": []}
+        return {"error": "API_KEY manquante"}
 
     try:
         for sport in SPORTS:
-            url = f"https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={API_KEY}&regions=eu&markets=h2h,totals&dateFormat=iso"
-            response = requests.get(url, timeout=10)
-            if response.status_code != 200:
+
+            url = f"https://api.the-odds-api.com/v4/sports/{sport}/odds/?apiKey={API_KEY}&regions=eu&markets=h2h,totals"
+            res = requests.get(url, timeout=10)
+
+            if res.status_code != 200:
                 continue
-            events = response.json()
+
+            events = res.json()
+
             for e in events[:5]:
+
                 match = f"{e['home_team']} vs {e['away_team']}"
                 bookmaker = e['bookmakers'][0]
+
                 for market in bookmaker['markets']:
+
                     for outcome in market['outcomes']:
-                        bets.append({
+
+                        odd = outcome['price']
+                        prob = round(1 / odd, 2)
+
+                        bet = {
                             "match": match,
                             "sport": sport,
                             "type": market['key'],
                             "prediction": outcome['name'],
-                            "odd": outcome['price'],
-                            "prob": round(1/outcome['price'],2)
-                        })
+                            "odd": odd,
+                            "prob": prob
+                        }
 
-        for b in bets:
-            b["value"] = round(b["prob"] * b["odd"],2)
+                        # 🔥 enrichissement stats
+                        bet = enrich_with_stats(bet)
 
-        simple = max(bets, key=lambda x: x["prob"]) if bets else {"match":"Pas de données","prediction":"-","prob":0,"odd":0,"value":0}
-        combo = sorted(bets, key=lambda x: x["value"], reverse=True)[:3]
+                        bet["value"] = value_score(bet["adjusted_prob"], odd)
+                        bet["confidence"] = confidence(bet["adjusted_prob"], odd)
 
-        return {"date": str(today), "simple": simple, "combo": combo}
+                        bets.append(bet)
+
+        # 🔥 TRI ULTRA IMPORTANT
+        bets = sorted(bets, key=lambda x: x["confidence"], reverse=True)
+
+        # 🔥 FILTRE QUALITÉ
+        bets = [b for b in bets if b["confidence"] > 2]
+
+        simple = bets[0] if bets else {}
+        combo = bets[:3]
+
+        return {
+            "date": str(today),
+            "simple": simple,
+            "combo": combo
+        }
 
     except Exception as e:
-        return {"date": str(today),
-                "simple": {"match": f"Erreur: {str(e)}", "prediction":"-", "prob":0,"odd":0,"value":0},
-                "combo": []}
+        return {"error": str(e)}
